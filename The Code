@@ -1,0 +1,426 @@
+// Arduino code made by Sofus Hanberg.
+// Tjek my youtube video to find out more: https://www.youtube.com/channel/UCQZkLoCQSm_UHfTefP15aCg
+
+#include <Wire.h>
+#include <LCD.h>
+#include <LiquidCrystal_I2C.h>
+#define BACKLIGHT_PIN  3
+
+#define  LED_OFF  0
+#define  LED_ON  1
+
+LiquidCrystal_I2C  lcd(0x27, 2, 1, 0, 4, 5, 6, 7); //scl=A5, sda=A4
+//___________
+const int dirPin1 = 8; //coil placer
+const int stepPin1 = 10; //coil placer
+float milli = 0;
+int motor = 11;
+int motor1 = 0;
+int nowState = 0;
+int counterTurn = 0;
+int lastCounter = 0;
+int turns = 0;
+int turnDir = 0;
+int buttonTjek = 0;
+int counterTjekTjek = 0;
+int relay = 5;
+//____________
+int button = A2;
+#define outputA A1
+#define outputB A0
+int counter = 0;
+int aState;
+int aLastState;
+//_______
+int period1 = 1000;
+int T = 1;
+unsigned long time1 = 0;
+//______________
+const int dirPin2 = 7;
+const int stepPin2 = 9;
+//_____________
+
+void setup() {
+  pinMode(stepPin1, OUTPUT);
+  pinMode(dirPin1, OUTPUT);
+  pinMode(stepPin2, OUTPUT);
+  pinMode(dirPin2, OUTPUT);
+  pinMode(relay, OUTPUT);
+  pinMode(motor, INPUT);
+  pinMode (button, INPUT);
+  digitalWrite (stepPin1, LOW);
+  digitalWrite (stepPin2, LOW);
+  digitalWrite (dirPin1, LOW);
+  digitalWrite (dirPin2, LOW);
+  digitalWrite (relay, LOW);
+  //_______
+  pinMode (outputA, INPUT);
+  pinMode (outputB, INPUT);
+  Serial.begin (9600);
+  aLastState = digitalRead(outputA);
+  //______
+  lcd.begin (16, 2);
+  lcd.clear();
+  lcd.setBacklightPin (BACKLIGHT_PIN, POSITIVE);
+  lcd.setBacklight (LED_ON);
+  lcd.print ("    HANBERG    ");
+  lcd.setCursor (0, 1);
+  lcd.print ("Winding  Machine");
+}
+
+void loop() {
+  encoder();
+  buttonState();
+  windingReight();
+  windingLeft();
+  nowState8 ();
+  lcdDisplay();
+  stepMotor();
+  stepMotor2();
+  changeMillimeter();
+  changeTurns();
+  turnsDirektion();
+  lastCounter = counter;
+  buttonTjek = 0;
+  counterTjekTjek = 0;
+  if (digitalRead(motor) == HIGH) {
+    motor1 = 1;
+  }
+  if (motor1 == 1 & digitalRead(motor) == LOW){
+    motor1 = 2;
+  }
+}
+
+void windingLeft () {
+  if (nowState == 7) {
+    if (turnDir == 0) {
+      if (turns <= counterTurn) {
+        nowState = 8;
+      }
+      if (motor1 == 2) {
+        for (int i = 0; i <= milli * 0.5; i++) {
+          digitalWrite(dirPin1, LOW);
+          digitalWrite(stepPin1, HIGH);
+          delayMicroseconds (800);
+          digitalWrite(stepPin1, LOW);
+          delayMicroseconds (800);
+        }
+        motor1 = 0;
+        counterTurn ++;
+        counterTjekTjek = 1;
+      }
+    }
+  }
+}
+
+void windingReight () {
+  if (nowState == 7) {
+    if (turnDir == 1) {
+      if (turns <= counterTurn) {
+        nowState = 8;
+      }
+      if (motor1 == 2) {
+        for (int i = 0; i <= milli * 0.5; i++) {
+          digitalWrite(dirPin1, HIGH);
+          digitalWrite(stepPin1, HIGH);
+          delayMicroseconds (800);
+          digitalWrite(stepPin1, LOW);
+          delayMicroseconds (800);
+        }
+        motor1 = 0;
+        counterTurn ++;
+        counterTjekTjek = 1;
+      }
+    }
+  }
+}
+
+void stepMotor () {
+
+  if (nowState == 2) {
+    if (counter <= -50) {
+      counter = -49;
+    }
+
+    if (counter >= 50) {
+      counter = 49;
+    }
+
+    if (counter > 0) {
+      period1 = 2000 - counter * 30;
+    }
+    if (counter < 0) {
+      period1 = 2000 - counter * -30;
+    }
+
+    if (counter <= -10) {
+      digitalWrite(dirPin1, HIGH);
+      if (micros() >= period1 + time1 & T == 1) {
+        digitalWrite(stepPin1, HIGH);
+        T = 0;
+        time1 = micros();
+      }
+      else if (micros() >= period1 + time1 & T == 0) {
+        digitalWrite(stepPin1, LOW);
+        T = 1;
+        time1 = micros();
+      }
+    }
+
+    if (counter >= 10) {
+      digitalWrite(dirPin1, LOW);
+      if (micros() >= period1 + time1 & T == 1) {
+        digitalWrite(stepPin1, HIGH);
+        T = 0;
+        time1 = micros();
+      }
+      else if (micros() >= period1 + time1 & T == 0) {
+        digitalWrite(stepPin1, LOW);
+        T = 1;
+        time1 = micros();
+      }
+    }
+  }
+}
+
+
+void stepMotor2 () {
+
+  if (nowState == 1) {
+    if (counter <= -50) {
+      counter = -49;
+    }
+
+    if (counter >= 50) {
+      counter = 49;
+    }
+
+    if (counter > 0) {
+      period1 = 2000 - counter * 30;
+    }
+    if (counter < 0) {
+      period1 = 2000 - counter * -30;
+    }
+
+    if (counter <= -10) {
+      digitalWrite(dirPin2, LOW);
+      if (micros() >= period1 + time1 & T == 1) {
+        digitalWrite(stepPin2, HIGH);
+        T = 0;
+        time1 = micros();
+      }
+      else if (micros() >= period1 + time1 & T == 0) {
+        digitalWrite(stepPin2, LOW);
+        T = 1;
+        time1 = micros();
+      }
+    }
+
+    if (counter >= 10) {
+      digitalWrite(dirPin2, HIGH);
+      if (micros() >= period1 + time1 & T == 1) {
+        digitalWrite(stepPin2, HIGH);
+        T = 0;
+        time1 = micros();
+      }
+      else if (micros() >= period1 + time1 & T == 0) {
+        digitalWrite(stepPin2, LOW);
+        T = 1;
+        time1 = micros();
+      }
+    }
+  }
+}
+
+
+void buttonState () {
+  if (digitalRead(button) == HIGH & nowState <= 6) {
+    counter = 0;
+    nowState ++;
+    buttonTjek = 1;
+    delay (200);
+  }
+  if (digitalRead(button) == HIGH & nowState == 7) {
+    nowState = 6;
+    buttonTjek = 1;
+    delay (200);
+  }
+}
+
+void changeMillimeter () {
+  if (nowState == 3) {
+    if (counter < 0) {
+      counter = 0;
+    }
+    if (counter > 400) {
+      counter = 400;
+    }
+    milli = counter;
+  }
+}
+
+void changeTurns () {
+  if (nowState == 4) {
+    if (counter <= -1) {
+      counter = 0;
+    }
+    turns = counter * 5;
+  }
+}
+
+void nowState8 () {
+  if (nowState == 8 & digitalRead(button)) {
+    nowState = 0;
+    buttonTjek = 1;
+    delay (1000);
+  }
+}
+
+void turnsDirektion () {
+  if (nowState == 5) {
+    if (counter >= 10) {
+      counter = 10;
+    }
+    if (counter <= -10) {
+      counter = -10;
+    }
+    if (counter < 0) {
+      turnDir = 1;
+    }//REIGHT
+    if (counter > 0) {
+      turnDir = 0;// LEFT
+    }
+  }
+}
+
+void encoder () {
+  aState = digitalRead(outputA);
+  if (aState != aLastState) {
+    if (digitalRead(outputB) != aState) {
+      counter ++;
+      Serial.println(counter);
+    } else {
+      counter --;
+      Serial.println(counter);
+    }
+  }
+  aLastState = aState;
+}
+
+void lcdDisplay () {
+  if (lastCounter != counter | buttonTjek == 1 | nowState == 8 | counterTjekTjek == 1) {
+    lcd.clear();
+    if (nowState == 0) {
+      lcd.print ("    HANBERG    ");
+      lcd.setCursor (0, 1);
+      lcd.print ("Winding  Machine");
+    }
+    ///________________
+    if (nowState == 1) {
+      lcd.print ("Move Coil Holder");
+      lcd.setCursor (12, 1);
+      lcd.print (counter);
+      if (counter >= 10) {
+        lcd.setCursor (0, 1);
+        lcd.print ("Left");
+      }
+      if (counter <= -10) {
+        lcd.setCursor (0, 1);
+        lcd.print ("Right");
+      }
+    }
+    ///______________
+    if (nowState == 2) {
+      lcd.print ("Move Coil Placer");
+      lcd.setCursor (12, 1);
+      lcd.print (counter);
+      if (counter >= 10) {
+        lcd.setCursor (0, 1);
+        lcd.print ("Left");
+      }
+      if (counter <= -10) {
+        lcd.setCursor (0, 1);
+        lcd.print ("Right");
+      }
+    }
+    ///______________
+    if (nowState == 3) {
+      lcd.print ("Change Coil Dia:");
+      lcd.setCursor (0, 1);
+      lcd.print (milli / 400);
+      lcd.setCursor (14, 1);
+      lcd.print ("mm");
+    }
+    ///_______________
+    if (nowState == 4) {
+      lcd.print ("Coil turns:");
+      lcd.setCursor (0, 1);
+      lcd.print (turns);
+      lcd.setCursor (15, 1);
+      lcd.print ("T");
+    }
+    ///_______________
+    if (nowState == 5) {
+      lcd.print ("Winding Way:");
+      if (turnDir == 0) {
+        lcd.setCursor (0, 1);
+        lcd.print ("Left");
+      }
+      if (turnDir == 1) {
+        lcd.setCursor (0, 1);
+        lcd.print ("Right");
+      }
+    }
+    ///_______________
+    if (nowState == 6) {
+      digitalWrite (relay, LOW);
+      lcd.print ("Start Machine:");
+      lcd.setCursor (0, 1);
+      lcd.print ("mm:");
+      lcd.setCursor (3, 1);
+      lcd.print (milli / 400);
+      lcd.setCursor (8, 1);
+      lcd.print ("T:");
+      lcd.setCursor (10, 1);
+      lcd.print (turns);
+      if (turnDir == 0) {
+        lcd.setCursor (15, 1);
+        lcd.print ("L");
+      }
+      if (turnDir == 1) {
+        lcd.setCursor (15, 1);
+        lcd.print ("R");
+      }
+    }
+    ///_______________
+    if (nowState == 7) {
+      digitalWrite (relay, HIGH);
+      lcd.print ("Stop Machine");
+      lcd.setCursor (0, 1);
+      lcd.print ("mm:");
+      lcd.setCursor (3, 1);
+      lcd.print (milli / 400);
+      lcd.setCursor (8, 1);
+      lcd.print ("T:");
+      lcd.setCursor (10, 1);
+      lcd.print (counterTurn);
+      if (turnDir == 0) {
+        lcd.setCursor (15, 1);
+        lcd.print ("L");
+      }
+      if (turnDir == 1) {
+        lcd.setCursor (15, 1);
+        lcd.print ("R");
+      }
+    }
+    ///_______________
+    if (nowState == 8) {
+      digitalWrite (relay, LOW);
+      lcd.print ("Coil finish :)");
+      turns = 0;
+      milli = 0;
+      delay (100);
+    }
+    ///_______________
+  }
+}
